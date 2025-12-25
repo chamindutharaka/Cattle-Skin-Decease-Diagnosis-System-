@@ -1,0 +1,6 @@
+venv311/
+.idea/
+__pycache__/
+datasets/
+*.pth
+.streamlit/
