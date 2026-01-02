@@ -5,7 +5,6 @@ from torchvision import transforms, models
 import torch.nn as nn
 import torch.nn.functional as F
 import numpy as np
-import pandas as pd
 import cv2
 
 # --------------------------------------------------
@@ -47,29 +46,25 @@ uploaded_file = st.file_uploader("Choose a cattle image...", type=["jpg", "jpeg"
 
 if uploaded_file:
 
-    # Display uploaded image
     image = Image.open(uploaded_file).convert("RGB")
     st.image(image, width=350, caption="Uploaded Image")
 
     # --------------------------------------------------
-    # MODEL PREDICTION + PROBABILITIES
+    # MODEL PREDICTION
     # --------------------------------------------------
     img_tensor = transform(image).unsqueeze(0)
 
     with torch.no_grad():
         output = model(img_tensor)
-        probs = F.softmax(output, dim=1)
-        _, pred = torch.max(probs, 1)
+        _, pred = torch.max(output, 1)
 
     disease = labels[pred.item()]
-    confidence = probs[0][pred.item()].item() * 100
 
     # --------------------------------------------------
     # DISEASE RESULTS
     # --------------------------------------------------
-    st.subheader("Disease Prediction:")
+    st.subheader("Detected Condition")
     st.write(f"**{disease.upper()}**")
-    st.write(f"Model confidence: **{confidence:.2f}%**")
 
     if disease == "healthy":
         st.success("Healthy cattle skin detected.")
@@ -79,26 +74,7 @@ if uploaded_file:
         st.error("Foot and Mouth Disease detected.")
 
     # --------------------------------------------------
-    # PER-CLASS PROBABILITY BAR CHART (RESEARCH FEATURE)
-    # --------------------------------------------------
-    st.subheader("Class Probability Distribution")
-
-    prob_data = {
-        "Disease": labels,
-        "Probability (%)": [
-            probs[0][0].item() * 100,
-            probs[0][1].item() * 100,
-            probs[0][2].item() * 100
-        ]
-    }
-
-    df_probs = pd.DataFrame(prob_data)
-    st.bar_chart(df_probs.set_index("Disease"))
-
-    st.caption("Probabilities are obtained using the softmax function on the model output.")
-
-    # --------------------------------------------------
-    # SEVERITY ANALYSIS (IMAGE PROCESSING)
+    # SEVERITY ANALYSIS
     # --------------------------------------------------
     img_cv = cv2.cvtColor(np.array(image), cv2.COLOR_RGB2GRAY)
 
@@ -115,6 +91,7 @@ if uploaded_file:
 
     if disease == "healthy":
         severity_level = "None"
+        color = "blue"
     else:
         if severity_percent < 10:
             severity_level = "Low"
@@ -129,7 +106,7 @@ if uploaded_file:
     # --------------------------------------------------
     # SEVERITY DISPLAY
     # --------------------------------------------------
-    st.subheader("Severity Level:")
+    st.subheader("Severity Level")
 
     if disease == "healthy":
         st.info("No wound area detected.")
@@ -148,8 +125,43 @@ if uploaded_file:
         st.write("Severity Coverage Scale:")
         st.progress(int(severity_percent))
 
-        # --------------------------------------------------
-        # SEGMENTATION PREVIEW
-        # --------------------------------------------------
-        st.write("Lesion segmentation output (white = wound area):")
-        st.image(thresh, width=350)
+    # --------------------------------------------------
+    # RISK LEVEL & RECOMMENDED ACTION
+    # --------------------------------------------------
+    st.subheader("Risk Level & Recommended Action")
+
+    if disease == "healthy":
+        risk_level = "No Risk"
+        recommendation = "No treatment required. Continue routine monitoring."
+    else:
+        if severity_percent < 10:
+            risk_level = "Low Risk"
+            recommendation = (
+                "Monitor the animal closely. Maintain hygiene and observe for progression."
+            )
+        elif severity_percent < 30:
+            risk_level = "Moderate Risk"
+            recommendation = (
+                "Veterinary inspection recommended. Provide supportive care and monitor regularly."
+            )
+        else:
+            risk_level = "High Risk"
+            recommendation = (
+                "Immediate isolation required. Urgent veterinary care is recommended."
+            )
+
+    st.markdown(
+        f"""
+        <div style="border-left:6px solid {color}; padding:12px; background-color:#f8f8f8;">
+        <b>Risk Level:</b> {risk_level}<br><br>
+        <b>Recommended Action:</b> {recommendation}
+        </div>
+        """,
+        unsafe_allow_html=True
+    )
+
+    # --------------------------------------------------
+    # SEGMENTATION PREVIEW
+    # --------------------------------------------------
+    st.subheader("Detected Lesion Regions")
+    st.image(thresh, width=350, caption="White regions indicate detected wound areas")
