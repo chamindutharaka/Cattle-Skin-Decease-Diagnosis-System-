@@ -1,27 +1,48 @@
-# Cattle Skin Disease Severity Assessment
+# Backend
 
-This project focuses on identifying cattle skin diseases and assessing the severity level of skin wounds using image-based analysis.
+This directory contains the Node.js and Express backend for the Cattle Monitoring Dashboard.
 
-## Project Description
-The system uses a deep learning model (ResNet-18 with transfer learning) to classify cattle skin images into disease categories such as healthy, lumpy skin disease, and foot-and-mouth disease.  
-Since the dataset does not contain labeled severity levels, severity is estimated using image processing techniques by calculating the lesion area percentage from the uploaded image.
+## Setup
 
-## Features
-- Disease classification using CNN
-- Severity estimation (Low / Medium / High)
-- Per-class probability visualization
-- Confidence-aware predictions
-- Web-based interface using Streamlit
+1.  **Install Dependencies:**
+    ```bash
+    npm install
+    ```
 
-## Technologies Used
-- Python
-- PyTorch
-- Torchvision
-- OpenCV
-- Streamlit
-- NumPy
-- Pandas
+2.  **Set up Environment Variables:**
+    Create a `.env` file in this directory and add the following variables:
+    ```
+    DATABASE_URL="file:./dev.db"
+    JWT_SECRET="your_jwt_secret"
+    ```
+    Replace `"your_jwt_secret"` with a long, random string.
 
-## How to Run
-```bash
-streamlit run app.py
+3.  **Run Database Migrations:**
+    This will create the SQLite database file and the necessary tables.
+    ```bash
+    npx prisma migrate dev
+    ```
+
+## Running the Server
+
+-   **Development Mode:**
+    This will start the server with `nodemon`, which automatically restarts the server when files are changed.
+    ```bash
+    npm run dev
+    ```
+    The server will be available at `http://localhost:3001`.
+
+-   **Production Mode:**
+    ```bash
+    npm start
+    ```
+
+## API Endpoints
+
+-   `POST /api/auth/register`: Register a new user.
+-   `POST /api/auth/login`: Login a user and get a JWT token.
+-   `POST /api/data`: Submit sensor data from an IoT device.
+-   `GET /api/cattle`: Get a list of all cattle.
+-   `POST /api/cattle`: Add a new cattle.
+-   `GET /api/cattle/:id`: Get details for a specific cattle.
+-   `GET /api/cattle/:id/history`: Get sensor history for a specific cattle.
