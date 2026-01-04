@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Cattle Skin Disease Diagnosis</title>
+
+    <style>
+        body {
+            background-color: #222;
+            color: #fff;
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+        }
+
+        .form-container {
+            width: 55%;
+            margin: auto;
+            padding: 20px;
+            background-color: #333;
+            border-radius: 10px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+            text-align: center;
+            margin-top: 40px;
+        }
+
+        input, button {
+            width: 85%;
+            margin: 8px 0;
+            padding: 10px;
+            border-radius: 5px;
+            border: none;
+        }
+
+        input[type="file"] {
+            background-color: #555;
+            color: #fff;
+        }
+
+        button {
+            background-color: #4CAF50;
+            color: white;
+            cursor: pointer;
+        }
+
+        button:hover {
+            background-color: #45a049;
+        }
+
+        .image-preview img {
+            max-width: 100%;
+            display: none;
+            border-radius: 5px;
+            margin-bottom: 15px;
+        }
+
+        .diagnosis, .info-box {
+            margin-top: 15px;
+            padding: 15px;
+            background-color: #444;
+            border-radius: 5px;
+            text-align: left;
+        }
+
+        .warning { border-left: 5px solid #ff9800; }
+        .danger { border-left: 5px solid #f44336; }
+        .normal { border-left: 5px solid #4CAF50; }
+    </style>
+</head>
+
+<body>
+
+<div class="form-container">
+
+    <h2>Cattle Skin Disease Diagnosis</h2>
+
+    <div class="image-preview">
+        <img id="preview">
+    </div>
+
+    <form>
+        <input type="file" accept="image/*" onchange="previewImage(event)">
+        <input type="number" id="temperature" placeholder="Body Temperature (°C) - optional" step="0.1">
+        <input type="number" id="humidity" placeholder="Relative Humidity (%) - optional">
+        <button type="button" onclick="uploadImage()">Diagnose</button>
+    </form>
+
+    <div class="diagnosis">
+        <h3>Model Diagnosis</h3>
+        <p id="diagnosisText">No image analyzed yet</p>
+    </div>
+
+    <div id="contextInfo"></div>
+
+</div>
+
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+
+<script>
+    function previewImage(event) {
+        const reader = new FileReader();
+        reader.onload = function () {
+            const img = document.getElementById("preview");
+            img.src = reader.result;
+            img.style.display = "block";
+        };
+        reader.readAsDataURL(event.target.files[0]);
+    }
+
+    function generateContextBoxes(temp, humidity) {
+        let html = "";
+
+        if (!isNaN(temp)) {
+            if (temp >= 41) {
+                html += `<div class="info-box danger">
+                    <b>High Body Temperature:</b> ${temp}°C indicates a severe febrile condition commonly linked to serious cattle skin diseases.
+                </div>`;
+            } else if (temp >= 40) {
+                html += `<div class="info-box warning">
+                    <b>Elevated Body Temperature:</b> ${temp}°C may indicate a serious infectious condition.
+                </div>`;
+            } else {
+                html += `<div class="info-box normal">
+                    <b>Normal Body Temperature:</b> ${temp}°C is within the normal range.
+                </div>`;
+            }
+        }
+
+        if (!isNaN(humidity)) {
+            if (humidity >= 75) {
+                html += `<div class="info-box danger">
+                    <b>High Humidity:</b> ${humidity}% strongly favors disease-transmitting insects.
+                </div>`;
+            } else if (humidity >= 65) {
+                html += `<div class="info-box warning">
+                    <b>Moderate Humidity:</b> ${humidity}% may increase disease transmission risk.
+                </div>`;
+            } else {
+                html += `<div class="info-box normal">
+                    <b>Normal Humidity:</b> ${humidity}% is less favorable for disease spread.
+                </div>`;
+            }
+        }
+
+        document.getElementById("contextInfo").innerHTML = html;
+    }
+
+    function uploadImage() {
+        const fileInput = document.querySelector('input[type="file"]');
+        const temp = parseFloat(document.getElementById("temperature").value);
+        const humidity = parseFloat(document.getElementById("humidity").value);
+
+        if (!fileInput.files.length) {
+            alert("Please select an image first.");
+            return;
+        }
+
+        document.getElementById("contextInfo").innerHTML = "";
+        document.getElementById("diagnosisText").textContent = "Analyzing...";
+
+        const formData = new FormData();
+        formData.append("file", fileInput.files[0]);
+
+        $.ajax({
+            url: "http://127.0.0.1:2200/predict",
+            type: "POST",
+            data: formData,
+            contentType: false,
+            processData: false,
+
+            success: function (response) {
+
+                // ✅ HANDLE NO-DETECTION CASE
+                if (response.error) {
+                    document.getElementById("diagnosisText").textContent = response.error;
+                    generateContextBoxes(temp, humidity);
+                    return;
+                }
+
+                // ✅ VALID DETECTION
+                if (response.prediction && response.confidence !== undefined) {
+                    document.getElementById("diagnosisText").textContent =
+                        "Prediction: " + response.prediction +
+                        " (" + response.confidence + "% confidence)";
+                    generateContextBoxes(temp, humidity);
+                } else {
+                    document.getElementById("diagnosisText").textContent =
+                        "No cattle skin lesion detected. Please upload a clear cattle image.";
+                }
+            },
+
+            error: function (xhr) {
+                if (xhr.responseJSON && xhr.responseJSON.error) {
+                    document.getElementById("diagnosisText").textContent =
+                        xhr.responseJSON.error;
+                } else {
+                    document.getElementById("diagnosisText").textContent =
+                        "Server error during prediction.";
+                }
+            }
+        });
+    }
+</script>
+
+</body>
+</html>
